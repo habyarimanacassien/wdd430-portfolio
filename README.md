@@ -2,7 +2,7 @@
 
 A simple portfolio site built for the WDD 430 W01 assignment with Next.js (App Router), TypeScript and Tailwind CSS.
 
-**Live site (Vercel):** `ADD-YOUR-VERCEL-URL-HERE`
+**Live site (Vercel):** `https://wdd430-portfolio-two-psi.vercel.app/`
 **Repository:** `https://github.com/habyarimanacassien/wdd430-portfolio`
 
 ## Pages
