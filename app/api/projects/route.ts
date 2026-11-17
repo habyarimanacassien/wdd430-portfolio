@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
   // No filter: return everything.
   if (type === null) {
-    return Response.json(getProjects());
+    return Response.json(await getProjects());
   }
 
   // A filter we don't recognise (e.g. ?type=foo) is the client's mistake: 400.
@@ -20,5 +20,5 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return Response.json(getProjects(type));
+    return Response.json(await getProjects(type));
 }

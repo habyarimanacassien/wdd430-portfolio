@@ -1,5 +1,8 @@
-// A tiny in-memory "database". It stands in for a real one (Postgres, Prisma, ...)
-// so the API routes can be swapped to real queries later without other changes.
+// Project data now lives in a PostgreSQL database hosted on Vercel (Neon).
+// The exported types and function names are unchanged, but the functions are
+// now async, so callers must `await` them.
+
+import { sql } from "@vercel/postgres";
 
 export type ProjectType = "opensource" | "school";
 
@@ -12,45 +15,41 @@ export interface ProjectRecord {
   link?: string;
 }
 
-const projects: ProjectRecord[] = [
-  {
-    id: 1,
-    type: "opensource",
-    title: "Quiz Generator",
-    description:
-      "A console-based TypeScript quiz app for testing knowledge of R programming concepts, with question categories, difficulty levels, and performance analytics.",
-    technologies: ["TypeScript", "Node.js", "npm"],
-    link: "https://github.com/habyarimanacassien/QuizGenerator",
-  },
-  {
-    id: 2,
-    type: "opensource",
-    title: "Weather Forecast App",
-    description:
-      "A web app that fetches and displays weather forecasts for cities worldwide using the OpenWeatherMap API.",
-    technologies: ["JavaScript", "CSS", "HTML"],
-    link: "https://github.com/habyarimanacassien/WEATHERFORECAST",
-  },
-  {
-    id: 3,
-    type: "school",
-    title: "Next.js Portfolio",
-    description:
-      "This portfolio site, built for WDD 430. It uses the App Router with nested layouts, reusable components, and API routes.",
-    technologies: ["Next.js", "React", "TypeScript", "Tailwind CSS"],
-  },
-];
+// The database returns NULL for a missing link; TypeScript expects it to be absent.
+type ProjectRow = Omit<ProjectRecord, "link"> & { link: string | null };
+
+function toRecord(row: ProjectRow): ProjectRecord {
+  const { link, ...rest } = row;
+  return link ? { ...rest, link } : rest;
+}
 
 export function isProjectType(value: string): value is ProjectType {
   return value === "opensource" || value === "school";
 }
 
 // Returns every project, or only those of one type when a type is given.
-export function getProjects(type?: ProjectType): ProjectRecord[] {
-  return type ? projects.filter((p) => p.type === type) : projects;
+export async function getProjects(type?: ProjectType): Promise<ProjectRecord[]> {
+  const { rows } = type
+    ? await sql<ProjectRow>`
+        SELECT id, type, title, description, technologies, link
+        FROM projects
+        WHERE type = ${type}
+        ORDER BY id`
+    : await sql<ProjectRow>`
+        SELECT id, type, title, description, technologies, link
+        FROM projects
+        ORDER BY id`;
+  return rows.map(toRecord);
 }
 
 // Returns one project, or undefined when no project has that id.
-export function getProjectById(id: number): ProjectRecord | undefined {
-  return projects.find((p) => p.id === id);
+export async function getProjectById(id: number): Promise<ProjectRecord | undefined> {
+  // Postgres INTEGER ids only go up to 2147483647; anything else can't match.
+  if (!Number.isInteger(id) || id < 1 || id > 2147483647) return undefined;
+
+  const { rows } = await sql<ProjectRow>`
+    SELECT id, type, title, description, technologies, link
+    FROM projects
+    WHERE id = ${id}`;
+  return rows[0] ? toRecord(rows[0]) : undefined;
 }

@@ -13,7 +13,7 @@ export async function GET(_request: NextRequest, ctx: RouteContext<"/api/project
     return Response.json({ error: "Invalid id" }, { status: 400 });
   }
 
-  const project = getProjectById(Number(id));
+  const project = await getProjectById(Number(id));
   if (!project) {
     return Response.json({ error: "Not found" }, { status: 404 });
   }
