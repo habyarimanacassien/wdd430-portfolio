@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ProjectList from "@/components/ProjectList";
-import { fetchProjects } from "@/lib/fetch-projects";
+import { connection } from "next/server";
+import { getProjects } from "@/lib/projects-db";
 
 export const metadata: Metadata = {
   title: "School Projects",
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default async function SchoolProjects() {
-  const projects = await fetchProjects("school"); // GET /api/projects?type=school
+  await connection(); // render per request, not once at build time
+  const projects = await getProjects("school"); // query Postgres directly
 
   return (
     <>

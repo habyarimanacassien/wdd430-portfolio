@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ProjectList from "@/components/ProjectList";
-import { fetchProjects } from "@/lib/fetch-projects";
+import { connection } from "next/server";
+import { getProjects } from "@/lib/projects-db";
 
 export const metadata: Metadata = {
   title: "Projects",
@@ -10,7 +11,8 @@ export const metadata: Metadata = {
 
 // Server Component: it can be async and await data before rendering.
 export default async function ProjectsOverview() {
-  const projects = await fetchProjects(); // GET /api/projects
+  await connection(); // render per request, not once at build time
+  const projects = await getProjects(); // query Postgres directly
   const openSourceCount = projects.filter((p) => p.type === "opensource").length;
   const schoolCount = projects.filter((p) => p.type === "school").length;
 

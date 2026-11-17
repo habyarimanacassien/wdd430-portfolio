@@ -1,25 +1,18 @@
-import ProjectList, { type Project } from "@/components/ProjectList";
+import { connection } from "next/server";
+import ProjectList from "@/components/ProjectList";
+import { getProjects } from "@/lib/projects-db";
 
 // No metadata here on purpose: the home page uses the default title from layout.tsx.
 
-const projects: Project[] = [
-  {
-    title: "Quiz Generator",
-    description:
-      "A TypeScript application that helps students test their knowledge of R programming concepts based on ICT Skills foundations. It features a console-based quiz system with multiple question categories, difficulty levels, and detailed performance analytics.",
-    technologies: ["TypeScript", "Node.js", "npm", "Visual Studio Code"],
-    link: "https://github.com/habyarimanacassien/QuizGenerator",
-  },
-  {
-    title: "Weather Forecast App",
-    description:
-      "A web application that fetches and displays weather forecasts for selected cities worldwide using the OpenWeatherMap API.",
-    technologies: ["JavaScript", "CSS", "HTML"],
-    link: "https://github.com/habyarimanacassien/WEATHERFORECAST",
-  },
-];
+export default async function Home() {
+  // Wait for a real visitor's request. Without this line, Next.js would run
+  // the query once during `npm run build` and keep serving that old result.
+  await connection();
 
-export default function Home() {
+  // Query Postgres on every request, so the page always shows the latest rows.
+  const projects = await getProjects();
+  const renderedAt = new Date().toLocaleTimeString();
+
   return (
     <div className="container mx-auto px-4 py-12">
       <section className="py-12 text-center">
@@ -28,6 +21,9 @@ export default function Home() {
           I&apos;m a statistician and data scientist learning full-stack
           development with Next.js and React. Here are some of my recent
           projects.
+        </p>
+        <p className="mt-2 text-sm text-gray-500">
+          Page rendered at {renderedAt}
         </p>
       </section>
 
