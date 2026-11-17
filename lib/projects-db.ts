@@ -53,3 +53,48 @@ export async function getProjectById(id: number): Promise<ProjectRecord | undefi
     WHERE id = ${id}`;
   return rows[0] ? toRecord(rows[0]) : undefined;
 }
+
+// ---------- Search and pagination ----------
+
+export const ITEMS_PER_PAGE = 6;
+
+// Never trust text from the URL. Trim it, cap its length, and escape the
+// LIKE wildcards (% and _) so "50%" searches for "50%", not "50 + anything".
+function toSearchPattern(query: string): string {
+  const cleaned = query.trim().slice(0, 100).replace(/[\\%_]/g, "\\$&");
+  return `%${cleaned}%`; // an empty query becomes "%%", which matches everything
+}
+
+// One page of projects whose title, description, or a technology contains the query.
+// The ${...} values are sent as SQL parameters, never pasted into the SQL text,
+// so they cannot cause SQL injection.
+export async function fetchFilteredProjects(
+  query: string,
+  currentPage: number,
+): Promise<ProjectRecord[]> {
+  const pattern = toSearchPattern(query);
+  const offset = (currentPage - 1) * ITEMS_PER_PAGE;
+
+  const { rows } = await sql<ProjectRow>`
+    SELECT id, type, title, description, technologies, link
+    FROM projects
+    WHERE title ILIKE ${pattern}
+       OR description ILIKE ${pattern}
+       OR array_to_string(technologies, ' ') ILIKE ${pattern}
+    ORDER BY id
+    LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}`;
+  return rows.map(toRecord);
+}
+
+// How many pages the search results fill (0 when nothing matches).
+export async function fetchProjectsPages(query: string): Promise<number> {
+  const pattern = toSearchPattern(query);
+
+  const { rows } = await sql<{ count: number }>`
+    SELECT COUNT(*)::int AS count
+    FROM projects
+    WHERE title ILIKE ${pattern}
+       OR description ILIKE ${pattern}
+       OR array_to_string(technologies, ' ') ILIKE ${pattern}`;
+  return Math.ceil(rows[0].count / ITEMS_PER_PAGE);
+}

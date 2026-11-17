@@ -1,20 +1,31 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import ProjectList from "@/components/ProjectList";
-import { connection } from "next/server";
-import { getProjects } from "@/lib/projects-db";
+import ProjectSearch from "@/components/ProjectSearch";
+import Pagination from "@/components/Pagination";
+import { fetchFilteredProjects, fetchProjectsPages } from "@/lib/projects-db";
 
 export const metadata: Metadata = {
   title: "Projects",
   description: "An overview of Cassien Habyarimana's open source and school projects.",
 };
 
-// Server Component: it can be async and await data before rendering.
-export default async function ProjectsOverview() {
-  await connection(); // render per request, not once at build time
-  const projects = await getProjects(); // query Postgres directly
-  const openSourceCount = projects.filter((p) => p.type === "opensource").length;
-  const schoolCount = projects.filter((p) => p.type === "school").length;
+// Reading searchParams makes this page render on every request (dynamic),
+// so `await connection()` is no longer needed here.
+export default async function ProjectsOverview(props: PageProps<"/projects">) {
+  const searchParams = await props.searchParams;
+
+  // Never trust the URL: values can be missing, repeated (?query=a&query=b)
+  // or nonsense (?page=abc). Accept only one string and whole numbers >= 1.
+  const query = typeof searchParams.query === "string" ? searchParams.query : "";
+  const requestedPage = Number(searchParams.page);
+
+  const totalPages = await fetchProjectsPages(query);
+  const currentPage =
+    Number.isInteger(requestedPage) && requestedPage >= 1
+      ? Math.min(requestedPage, Math.max(totalPages, 1)) // ?page=99 -> last page
+      : 1;
+  const projects = await fetchFilteredProjects(query, currentPage);
 
   return (
     <>
@@ -30,7 +41,7 @@ export default async function ProjectsOverview() {
             className="block rounded border-l-4 border-blue-600 bg-gray-50 p-4 text-gray-900 hover:bg-blue-50"
           >
             <span className="mb-1 block text-xl font-bold">Open Source Projects</span>
-            <span className="text-gray-700">{openSourceCount} public projects on GitHub.</span>
+            <span className="text-gray-700">Public projects on GitHub.</span>
           </Link>
         </li>
         <li>
@@ -39,13 +50,23 @@ export default async function ProjectsOverview() {
             className="block rounded border-l-4 border-blue-600 bg-gray-50 p-4 text-gray-900 hover:bg-blue-50"
           >
             <span className="mb-1 block text-xl font-bold">School Projects</span>
-            <span className="text-gray-700">{schoolCount} projects from my BYU coursework.</span>
+            <span className="text-gray-700">Projects from my BYU coursework.</span>
           </Link>
         </li>
       </ul>
 
       <h2 className="mb-4 text-2xl font-semibold">All Projects</h2>
-      <ProjectList projects={projects} />
+      <ProjectSearch />
+
+      {projects.length > 0 ? (
+        <ProjectList projects={projects} />
+      ) : (
+        <p className="text-gray-700 dark:text-gray-300">
+          No projects match &ldquo;{query}&rdquo;.
+        </p>
+      )}
+
+      <Pagination totalPages={totalPages} currentPage={currentPage} />
     </>
   );
 }
