@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 
 export default async function OpenSourceProjects() {
   await connection(); // render per request, not once at build time
+
   const projects = await getProjects("opensource"); // query Postgres directly
 
   return (
